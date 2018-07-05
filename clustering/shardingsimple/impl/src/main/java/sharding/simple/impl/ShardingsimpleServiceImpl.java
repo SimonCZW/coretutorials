@@ -71,11 +71,14 @@ public class ShardingsimpleServiceImpl implements ShardingsimpleService, AutoClo
         rpcReg.close();
     }
 
+    ////////////////////////////////// 实现 /////////////////////////////////
+    // 证明可以实现：每个外层list都是在不同shard上
     @Override
     public Future<RpcResult<ShardTestOutput>> shardTest(ShardTestInput input) {
         LOG.info("Input: {}", input);
 
         try {
+            // 根据RPC传入的shard测试类型，创建不同的ShardTest
             final AbstractShardTest shardTest = testFactory.createTest(input);
             final ShardTestStats stats = shardTest.runTest();
             if (input.isValidateData()) {

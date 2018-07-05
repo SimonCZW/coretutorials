@@ -45,6 +45,7 @@ public class RoundRobinShardTest extends AbstractShardTest {
             LogicalDatastoreType dataStoreType, Boolean precreateTestData, ShardHelper shardHelper,
             DOMDataTreeService dataTreeService) throws ShardTestException {
 
+        // 创建InMemoryDOMDataTreeShard,DOMDataTreeProducer及shard监听器
         super(numShards, numItems, numListeners, opsPerTx, dataStoreType, precreateTestData,
                 shardHelper, dataTreeService);
         LOG.info("Created RoundRobinShardTest");
@@ -61,14 +62,20 @@ public class RoundRobinShardTest extends AbstractShardTest {
         createListAnchors();
         final List<MapEntryNode> testData = preCreateTestData();
 
+        // Maker: org.opendaylight.mdsal.dom.api.DOMDataTreeCursorAwareTransaction;
         DOMDataTreeCursorAwareTransaction[] tx = new DOMDataTreeCursorAwareTransaction[(int) numShards];
         DOMDataTreeWriteCursor[] cursor = new DOMDataTreeWriteCursor[(int) numShards];
         int[] writeCnt = new int[(int) numShards];
 
+        // numShards对应于outter list元素数量
+        // 每个outter list元素对应于一个shard data
         for (int s = 0; s < numShards; s++) {
             writeCnt[s] = 0;
+            // 取出一个shardData(封装了InMemoryDOMDataTreeShard,DOMDataTreeProducer)
             ShardData sd = shardData.get(s);
+            // 通过producer创建DOMDataTreeCursorAwareTransaction
             tx[s] = sd.getProducer().createTransaction(false);
+            // 通过DOMDataTreeCursorAwareTransaction创建DOMDataTreeWriteCursor
             cursor[s] = tx[s].createCursor(sd.getDOMDataTreeIdentifier());
             cursor[s].enter(new NodeIdentifier(InnerList.QNAME));
         }
@@ -77,19 +84,28 @@ public class RoundRobinShardTest extends AbstractShardTest {
         int testDataIdx = 0;
         final long startTime = System.nanoTime();
 
+        // numItems对应rpc的data items
         for (int i = 0; i < numItems; i++) {
+            // numShard对应rpc的shard，这个循环的目的是给每个shard都写入内层inner list元素
+            // 相当于每个外层outter list的都有相同的数量的内层list元素
+            // 而每个外层list都是在不同shard上
             for (int s = 0; s < numShards; s++) {
+                // 内层inner list, 根据rpc的data items数量创建，key就是i
                 NodeIdentifierWithPredicates nodeId = new NodeIdentifierWithPredicates(InnerList.QNAME,
                         DomListBuilder.IL_NAME, (long)i);
                 MapEntryNode element;
-                if (preCreateTestData) {
+                if (preCreateTestData) { //rpc默认false
                     element = testData.get(testDataIdx++);
                 } else {
+                    // 创建内层inner list的MapEntryNode
                     element = createListEntry(nodeId, s, (long)i);
                 }
-                writeCnt[s]++;
+                writeCnt[s]++; //为1-》PUT
+                // 给每个shard写入数据
                 cursor[s].write(nodeId, element);
 
+                // number of write operations (PUT, MERGE, or DELETE)
+                //                   before a transaction submit() is issued
                 if (writeCnt[s] == opsPerTx) {
                     // We have reached the limit of writes-per-transaction.
                     // Submit the current outstanding transaction and create
@@ -109,6 +125,7 @@ public class RoundRobinShardTest extends AbstractShardTest {
                         }
                     });
 
+                    // 重置writeCnt
                     writeCnt[s] = 0;
                     ShardData sd = shardData.get(s);
                     tx[s] = sd.getProducer().createTransaction(false);
@@ -126,6 +143,7 @@ public class RoundRobinShardTest extends AbstractShardTest {
             txSubmitted++;
             cursor[s].close();
             try {
+                // submit每个shard
                 tx[s].submit().checkedGet();
                 // txOk.incrementAndGet();
             } catch (TransactionCommitFailedException e) {

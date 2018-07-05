@@ -39,10 +39,12 @@ public class ShardingSimpleProvider {
      * @param schemaService: reference to MD-SAL Schema Service
      */
     public ShardingSimpleProvider(final RpcProviderRegistry rpcRegistry,
-            final DOMDataTreeShardingService dataTreeShardingService,
-            final DOMDataTreeService dataTreeService,
-            final SchemaService schemaService) {
+            final DOMDataTreeShardingService dataTreeShardingService, //org.opendaylight.mdsal.dom.api.DOMDataTreeShardingService
+            final DOMDataTreeService dataTreeService, //org.opendaylight.mdsal.dom.api.DOMDataTreeService
+            final SchemaService schemaService) { //org.opendaylight.controller.sal.core.api.model.SchemaService
+        // ShardHelper封装创建shard及producer方法
         this.shardHelper = new ShardHelper(dataTreeShardingService, dataTreeService, schemaService);
+        // 传入helper和DOMDataTreeService
         this.testFactory = new ShardTestFactory(shardHelper, dataTreeService);
         this.rpcServiceImpl = new ShardingsimpleServiceImpl(rpcRegistry, testFactory);
 

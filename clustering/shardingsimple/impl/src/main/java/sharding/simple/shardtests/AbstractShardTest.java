@@ -80,11 +80,14 @@ public abstract class AbstractShardTest implements AutoCloseable {
         // Create the specified number of shards/producers and register them
         // with MD-SAL
         try {
+            // Important
+            // 看样子是给outer list创建多个shard ?
             for (Long i = (long)0; i < numShards; i++) {
                 final YangInstanceIdentifier yiId =
                                 TEST_DATA_ROOT_YID.node(new NodeIdentifierWithPredicates(OuterList.QNAME,
                                 QName.create(OuterList.QNAME, "oid"),
-                                i));
+                                i)); //oid为i(这个list元素的key oid为i)
+                // 创建InMemoryDOMDataTreeShard,DOMDataTreeProducer
                 final ShardData sd = shardHelper.createAndInitShard(dataStoreType, yiId);
                 shardData.add(sd);
             }
@@ -99,6 +102,7 @@ public abstract class AbstractShardTest implements AutoCloseable {
             final ArrayList<DOMDataTreeIdentifier> treeIds = Lists.newArrayList();
             shardData.forEach(sd -> treeIds.add(sd.getDOMDataTreeIdentifier()));
             for (long i = 0; i < numListeners; i++) {
+                // 注册ShardTestListener 监听创建的shard
                 testListenerRegs.add(dataTreeService.registerListener(new ShardTestListener(),
                         treeIds, false, Collections.emptyList()));
             }
